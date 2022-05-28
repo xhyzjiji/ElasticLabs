@@ -1,0 +1,19 @@
+spring:
+  profiles:
+    active: local # 命令行参数优先
+  main:
+    allow-bean-definition-overriding: true
+  aop:
+    proxy-target-class: true # true=cglib(default); false=jdk-proxy
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB # 不限上传文件大小
+      max-request-size: 100MB
+
+mybatis:
+  configuration:
+    mapUnderscoreToCamelCase: true
+    cache-enabled: false

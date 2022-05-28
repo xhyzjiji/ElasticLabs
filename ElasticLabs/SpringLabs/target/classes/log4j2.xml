@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration status="WARN">
+    <!--全局参数-->
+    <Properties>
+        <Property name="pattern">%d{yyyy-MM-dd HH:mm:ss,SSS} %t %p[%X{DtsTraceId}][%X{DtsId}]%C.%M(%F:%L) : %m%n
+        </Property>
+    </Properties>
+
+    <appenders>
+        <Console follow="true" name="console" target="SYSTEM_OUT">
+            <PatternLayout>
+                <Pattern>${pattern}</Pattern>
+            </PatternLayout>
+            <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
+        </Console>
+    </appenders>
+
+    <loggers>
+        <!--建立一个默认的root的logger-->
+        <root level="info">
+            <appender-ref ref="console"/>
+        </root>
+    </loggers>
+</configuration>
