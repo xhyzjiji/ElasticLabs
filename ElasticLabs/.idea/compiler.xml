@@ -10,6 +10,7 @@
         <module name="SpringLabs" />
         <module name="Storage" />
         <module name="Commons" />
+        <module name="Network" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel target="8" />

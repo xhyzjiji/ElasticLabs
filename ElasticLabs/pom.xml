@@ -13,6 +13,7 @@
         <module>DesignPatterns</module>
         <module>Commons</module>
         <module>Storage</module>
+        <module>Network</module>
     </modules>
 
     <repositories>
