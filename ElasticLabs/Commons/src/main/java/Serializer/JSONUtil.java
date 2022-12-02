@@ -20,9 +20,6 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Created by lvfei on 2019/9/9.
- */
 public class JSONUtil {
 	private static final Logger LOG = LoggerFactory.getLogger(JSONUtil.class);
 

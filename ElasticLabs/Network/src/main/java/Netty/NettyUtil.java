@@ -3,6 +3,7 @@ package Netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.handler.stream.ChunkedStream;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
@@ -47,6 +48,11 @@ public class NettyUtil {
 		} catch (Exception e) {
 			return "0.0.0.0";
 		}
+	}
+
+	public static ChannelFuture sendMsg(Channel channel, String msg) {
+		final ByteBuf bb = Unpooled.wrappedBuffer(msg.getBytes());
+		return channel.writeAndFlush(bb);
 	}
 
 }

@@ -2,10 +2,7 @@ package Netty;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -26,20 +23,28 @@ public class Client implements Peer {
     private ContainerConstants.Role role = ContainerConstants.Role.CLIENT;
 
     private AtomicBoolean running = new AtomicBoolean(false);
-    private String clientId = "Client-" + CLINET_ID_GENER.getAndIncrement();
+    private final String clientId = "Client-" + CLINET_ID_GENER.getAndIncrement();
     private Bootstrap bootstrap;
     private EventLoopGroup ioGroup;
     private Channel clientChannel;
 
+    public String getClientId() {
+        return clientId;
+    }
+
+    public Channel getClientChannel() {
+        return clientChannel;
+    }
+
     public void start() {
         if (running.compareAndSet(false, true)) {
             logger.info("{} start...", clientId);
-            this.ioGroup = new NioEventLoopGroup(new ThreadFactory() {
+            this.ioGroup = new NioEventLoopGroup(4/*new ThreadFactory() {
                 @Override
                 public Thread newThread(Runnable r) {
                     return new Thread(r, clientId);
                 }
-            }); // 多个channel可以复用一个group，内部轮询均摊channel
+            }*/); // 多个channel可以复用一个group，内部轮询均摊channel
             this.bootstrap = new Bootstrap();
             bootstrap.group(ioGroup)
                 .channel(NioSocketChannel.class)
@@ -77,7 +82,7 @@ public class Client implements Peer {
         }
     }
 
-    public void send(String line) {
-        clientChannel.writeAndFlush(Unpooled.wrappedBuffer(line.getBytes()));
+    public ChannelFuture send(String line) {
+        return clientChannel.writeAndFlush(Unpooled.wrappedBuffer(line.getBytes()));
     }
 }

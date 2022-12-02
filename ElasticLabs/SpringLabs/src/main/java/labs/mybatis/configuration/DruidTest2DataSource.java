@@ -86,7 +86,7 @@ public class DruidTest2DataSource {
     }
 
     @Bean(name = "test2MapperScannerConfigurer")
-    public /*static*/ MapperScannerConfigurer test2MapperScannerConfigurer() {
+    public static MapperScannerConfigurer test2MapperScannerConfigurer() {
         MapperScannerConfigurer configurer = new MapperScannerConfigurer();
         configurer.setSqlSessionFactoryBeanName("test2SqlSessionFactory");
         configurer.setBasePackage("labs.mybatis.dao.test2");

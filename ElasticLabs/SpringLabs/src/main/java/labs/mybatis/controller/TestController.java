@@ -17,6 +17,10 @@ public class TestController {
         return "Hello world!";
     }
 
+    /**
+     * localhost:/test
+     * @return
+     */
     @RequestMapping("/test")
     public String test() {
         return JSONUtil.toJsonStringSilent(simpleCRUD.getTestObjects(10), false);

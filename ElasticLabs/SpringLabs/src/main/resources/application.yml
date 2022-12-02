@@ -17,3 +17,8 @@ mybatis:
   configuration:
     mapUnderscoreToCamelCase: true
     cache-enabled: false
+
+server:
+  port: 8080
+  servlet:
+    context-path: /

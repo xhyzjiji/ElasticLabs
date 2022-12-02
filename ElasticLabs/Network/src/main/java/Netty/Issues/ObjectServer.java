@@ -1,5 +1,6 @@
-package Netty;
+package Netty.Issues;
 
+import Netty.*;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -9,36 +10,56 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.DelimiterBasedFrameDecoder;
-import io.netty.handler.codec.Delimiters;
-import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.handler.codec.serialization.ClassResolvers;
+import io.netty.handler.codec.serialization.ObjectDecoder;
+import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static Netty.ContainerConstants.CHANNEL_IDLE_TIMEOUT;
+public class ObjectServer implements Peer {
 
-public class Server implements Peer {
-
-    private Logger logger = LoggerFactory.getLogger(Server.class);
-
-    private final ContainerConstants.Role role = ContainerConstants.Role.SERVER;
+    private Logger logger = LoggerFactory.getLogger(ObjectServer.class);
 
     private AtomicBoolean running = new AtomicBoolean(false);
-    protected ChannelGroup channelGroup;
-    protected BlockingQueue<SendTask> bq = new ArrayBlockingQueue<>(100);
     private ServerBootstrap serverBootstrap;
     private Channel serverChannel;
     private EventLoopGroup bossGroup;
     private EventLoopGroup ioGroup;
+    private static EventLoopGroup registrationGroup;
+    private static EventLoopGroup messageGroup;
+
+    private Map<String, Channel> clientChannels = new HashMap<>();
+
+    static {
+        registrationGroup = new NioEventLoopGroup(1, new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r, "server_registration");
+                t.setDaemon(true);
+                return t;
+            }
+        });
+        messageGroup = new NioEventLoopGroup(1, new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r, "server_message");
+                t.setDaemon(true);
+                return t;
+            }
+        });
+    }
 
     public void start() {
         if (running.compareAndSet(false, true)) {
@@ -57,7 +78,6 @@ public class Server implements Peer {
                 }
             });
 
-            this.channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
             this.serverBootstrap = new ServerBootstrap();
             this.serverBootstrap.group(bossGroup, ioGroup)
                     .channel(NioServerSocketChannel .class)
@@ -65,13 +85,14 @@ public class Server implements Peer {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             ChannelPipeline pipeline = socketChannel.pipeline();
-
-                            pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, CHANNEL_IDLE_TIMEOUT/*second*/));
-                            pipeline.addAfter("idleStateHandler", "idleTimeoutHandler", new ChannelIdleTimeoutHandler());
-//                            pipeline.addLast("containerStatHandler", parent.getContainerStatHandler());
-                            pipeline.addLast("connectionHandler", new ConnectionHandler(Server.this.channelGroup));
-                            pipeline.addLast("frameDecoder", new DelimiterBasedFrameDecoder(128 * 1024, Delimiters.lineDelimiter()));
-                            pipeline.addLast("requestHandler", new RequestHandler(Server.this));
+//                            pipeline.addFirst("idleStateHandler", new IdleStateHandler(0, 0, CHANNEL_IDLE_TIMEOUT/*second*/));
+//                            pipeline.addAfter("idleStateHandler", "idleTimeoutHandler", new ChannelIdleTimeoutHandler());
+                            pipeline.addLast("containerStatHandler", new ConnectionHandler());
+//                            pipeline.addLast("frameDecoder", new DelimiterBasedFrameDecoder(128 * 1024, Delimiters.lineDelimiter()));
+                            pipeline.addLast("objectEncoder", new ObjectEncoder());
+                            pipeline.addLast("objectDecoder", new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.cacheDisabled(null/*this.getClass().getClassLoader()*/)));
+                            pipeline.addLast(registrationGroup, "registrationHandler", new RegistrationObjectHandler(ObjectServer.this));
+                            pipeline.addLast(messageGroup, "requestHandler", new MessageObjectHandler(ObjectServer.this));
                             pipeline.addLast("exceptionHandler", new ExceptionHandler());
                         }
                     })
@@ -79,8 +100,8 @@ public class Server implements Peer {
                     .childOption(ChannelOption.SO_REUSEADDR, ContainerConstants.SO_REUSEADDR)
                     .childOption(ChannelOption.TCP_NODELAY, ContainerConstants.TCP_NODELAY)
                     .childOption(ChannelOption.SO_KEEPALIVE, ContainerConstants.SO_KEEPALIVE)
-                    .childOption(ChannelOption.SO_SNDBUF, 5 * 1024)
-                    .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(1024, 2048))
+                    .childOption(ChannelOption.SO_SNDBUF, 10 * 1024)
+                    .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(100 * 1024, 1000 * 1024))
                     .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
             try {
                 ChannelFuture future = this.serverBootstrap.bind(8888);
@@ -95,30 +116,13 @@ public class Server implements Peer {
                 logger.error("A throwable was caught while intializing server", te);
             }
 
-            new Thread() {
+            Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
                 public void run() {
-                    while (running.get()) {
-                        BlockingQueue<SendTask> sendTasks = Server.this.bq;
-                        SendTask st = sendTasks.peek();
-                        if (Objects.nonNull(st)) {
-                            try {
-                                if (st.call()) {
-                                    sendTasks.poll();
-                                }
-                            } catch (Exception e) {
-                                logger.error("Exec SendTask error", e);
-                            }
-                        } else {
-                            try {
-                                Thread.sleep(1000);
-                            } catch (InterruptedException ie) {
-
-                            }
-                        }
-                    }
+                    registrationGroup.shutdownGracefully();
+                    messageGroup.shutdownGracefully();
                 }
-            }.start();
+            });
         }
     }
 
@@ -126,29 +130,30 @@ public class Server implements Peer {
         if (running.compareAndSet(true, false)) {
             logger.info("server stop...");
             this.serverChannel.close().awaitUninterruptibly();
-            // recycle session in addListener or channelInactive event
-            int channelNum = channelGroup.size();
-            this.channelGroup.close().awaitUninterruptibly();
-            logger.info("{} children channels are all closed!", channelNum);
 
             this.bossGroup.shutdownGracefully();
             this.ioGroup.shutdownGracefully();
+//            registrationGroup.shutdownGracefully();
+//            messageGroup.shutdownGracefully();
             logger.info("server stop successfully");
         }
     }
 
-    public void sendAll(String line) {
-        channelGroup.writeAndFlush(Unpooled.wrappedBuffer(line.getBytes()));
-    }
-
-    public void send(String clientId, String msg) {
-        Iterator<Channel> channelIterator = channelGroup.iterator();
-        while (channelIterator.hasNext()) {
-            Channel c = channelIterator.next();
-            if (StringUtils.equals(NettyUtil.getChannelAttribute(c, ContainerConstants.ATTR_CLIENTID), clientId)) {
-                NettyUtil.sendMsg(c, msg);
+    public void send(String clientId, MessageObject messageObject) throws Exception {
+        Channel channel = clientChannels.get(clientId);
+        boolean sent = false;
+        while (!sent) {
+            if (!channel.isWritable()) {
+                Thread.sleep(100);
+            } else {
+                channel.writeAndFlush(messageObject);
+                sent = true;
             }
         }
+    }
+
+    public void registClient(String clientId, Channel channel) {
+        clientChannels.put(clientId, channel);
     }
 
 }

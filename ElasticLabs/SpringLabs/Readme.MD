@@ -1,0 +1,7 @@
+# 1.问题记录
+## 1.1 MapperScannerConfigurer导致@Value失效
+原因：
+（1）MapperScannerConfigurer实现接口BeanDefinitionRegistryPostProcessor改变Bean加载顺序，导致processPropertyPlaceHolders被提前调用；
+（2）processPropertyPlaceHolders正常的调用顺序是在
+解决：
+（1）MapperScannerConfigurer的Bean创建方法使用static

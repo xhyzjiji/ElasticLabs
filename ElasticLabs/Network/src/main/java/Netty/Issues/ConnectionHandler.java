@@ -1,4 +1,4 @@
-package Netty;
+package Netty.Issues;
 
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
@@ -6,8 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.Map;
-import java.util.Set;
 
 @ChannelHandler.Sharable
 public class ConnectionHandler extends ChannelDuplexHandler {
@@ -16,16 +14,8 @@ public class ConnectionHandler extends ChannelDuplexHandler {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ConnectionHandler.class);
 
-	private final ChannelGroup channelGroup;
-
-
-	public ConnectionHandler(ChannelGroup channelGroup) {
-		this.channelGroup = channelGroup;
-	}
-
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
-		channelGroup.add(ctx.channel());
 		ctx.fireChannelActive();
 		logger.info("server get client {}", ctx.channel().id());
 	}
@@ -37,7 +27,6 @@ public class ConnectionHandler extends ChannelDuplexHandler {
 		String ip = socketAddress.getAddress().getHostAddress();
 		LOG.warn("channel {}, ip {} has no clientId, close normally", channel.id().asShortText(), ip);
 
-		channelGroup.remove(ctx.channel());
 		ctx.fireChannelInactive();
 		logger.info("server say bye to client {}", ctx.channel().id());
 	}

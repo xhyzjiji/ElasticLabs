@@ -93,7 +93,7 @@ public class DruidTest1DataSource /*implements EnvironmentAware*/ {
     }
 
     @Bean(name = "test1MapperScannerConfigurer")
-    public /*static*/ MapperScannerConfigurer test1MapperScannerConfigurer() {
+    public static MapperScannerConfigurer test1MapperScannerConfigurer() {
         MapperScannerConfigurer configurer = new MapperScannerConfigurer();
         configurer.setSqlSessionFactoryBeanName("test1SqlSessionFactory");
         configurer.setBasePackage("labs.mybatis.dao.test1");

@@ -14,6 +14,7 @@
         <module>Commons</module>
         <module>Storage</module>
         <module>Network</module>
+        <module>DataLake</module>
     </modules>
 
     <repositories>
@@ -21,6 +22,16 @@
             <id>aliyunmaven</id>
             <name>aliyun</name>
             <url>https://maven.aliyun.com/repository/public</url>
+        </repository>
+
+        <repository>
+            <id>central</id>
+            <name>Central Repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <layout>default</layout>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
     </repositories>
 
@@ -121,6 +132,20 @@
             <version>${spring-boot-version}</version>
             <scope>runtime</scope>
             <optional>true</optional>
+        </dependency>
+
+        <!--sinker-->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-parquet_2.12</artifactId>
+            <version>1.13.6</version>
+        </dependency>
+
+        <!--thread affinity-->
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>affinity</artifactId>
+            <version>3.23.2</version>
         </dependency>
     </dependencies>
 
